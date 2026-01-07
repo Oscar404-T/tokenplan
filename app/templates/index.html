@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-12 text-center mb-4">
+            <h1>东信光电排产工具</h1>
+            <p class="lead">这是一个用于管理订单、计算产能和排产计划的系统。</p>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card h-100 text-center card-hover">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title">订单管理</h5>
+                        <p class="card-text flex-grow-1">管理产品订单，包括创建、编辑、删除和查看订单详情。</p>
+                        <a href="{{ url_for('order_management') }}" class="btn btn-primary mt-auto">进入订单管理</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card h-100 text-center card-hover">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title">产能管理</h5>
+                        <p class="card-text flex-grow-1">管理车间产能信息，设置各工序的机台数量和节拍。</p>
+                        <a href="{{ url_for('capacity_management') }}" class="btn btn-primary mt-auto">进入产能管理</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card h-100 text-center card-hover">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title">整体排产</h5>
+                        <p class="card-text flex-grow-1">查看整体排产计划，了解各车间各工序的生产安排。</p>
+                        <a href="{{ url_for('overall_production_schedule') }}" class="btn btn-primary mt-auto">查看整体排产</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

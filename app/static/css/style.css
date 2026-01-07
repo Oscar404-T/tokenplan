@@ -1,0 +1,126 @@
+/* 全局样式 */
+body {
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8f9fa;
+}
+
+/* 导航栏样式 */
+.navbar-brand {
+    font-weight: bold;
+}
+
+/* 卡片样式 */
+.card {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-hover:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+.card-header {
+    background-color: #f1f3f5;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+/* 表格样式 */
+.table th {
+    background-color: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+    font-weight: 600;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* 按钮样式 */
+.btn {
+    border-radius: 4px;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.9rem;
+}
+
+.btn-primary {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.btn-primary:hover {
+    background-color: #0b5ed7;
+    border-color: #0a58ca;
+}
+
+/* 排产表格样式 */
+.table-bordered {
+    border: 1px solid #dee2e6;
+}
+
+.table-bordered th,
+.table-bordered td {
+    border: 1px solid #dee2e6;
+    padding: 0.5rem;
+    text-align: center;
+    vertical-align: middle;
+}
+
+/* 标签样式 */
+.badge {
+    font-size: 0.8em;
+    padding: 0.3em 0.6em;
+}
+
+/* 表单样式 */
+.form-control {
+    border-radius: 4px;
+    padding: 0.375rem 0.75rem;
+}
+
+.form-label {
+    font-weight: 500;
+    margin-bottom: 0.3rem;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.8rem;
+    }
+    
+    .table th,
+    .table td {
+        padding: 0.25rem;
+    }
+    
+    .card {
+        margin-bottom: 1rem;
+    }
+}
+
+/* 排产表格特殊样式 */
+.schedule-table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+.schedule-table th,
+.schedule-table td {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 80px;
+}
+
+/* 产品信息样式 */
+.product-info {
+    background-color: #f8f9fa;
+    border-left: 4px solid #0d6efd;
+    padding: 1rem;
+}

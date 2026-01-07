@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>整体排产计划</h2>
+    <div>
+        {% if user.role.name == 'ADMIN' %}
+            <form method="POST" action="{{ url_for('generate_schedule') }}" style="display: inline;">
+                <button type="submit" class="btn btn-success">生成排程计划</button>
+            </form>
+            <button type="button" class="btn btn-danger ms-2" data-bs-toggle="modal" data-bs-target="#deleteAllSchedulesModal">
+                删除所有排程
+            </button>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 车间选择器 -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('overall_production_schedule') }}">
+            <div class="row align-items-center">
+                <div class="col-auto">
+                    <label for="workshop" class="col-form-label"><strong>选择车间:</strong></label>
+                </div>
+                <div class="col-auto">
+                    <select name="workshop" id="workshop" class="form-select">
+                        {% for workshop in workshops %}
+                        <option value="{{ workshop.name }}" {{ 'selected' if selected_workshop == workshop.name else '' }}>
+                            {{ workshop.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">查看排产</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<p>查看{{ selected_workshop }}的排产情况</p>
+
+<div class="mt-4">
+    {% if schedule_data %}
+        {% for date, date_data in schedule_data.items() %}
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">{{ date }} 排产计划</h4>
+                {% if user.role.name == 'ADMIN' %}
+                    <form method="POST" action="{{ url_for('delete_schedule_by_date', date=date) }}" style="display: inline;">
+                        <button type="submit" class="btn btn-danger btn-sm" 
+                                onclick="return confirm('确定要删除 {{ date }} 的所有排程数据吗？')">删除当天排程</button>
+                    </form>
+                {% endif %}
+            </div>
+            
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>工序</th>
+                                {% for hour in range(24) %}
+                                <th>{{ "%02d"|format(hour) }}:00</th>
+                                {% endfor %}
+                                {% if user.role.name == 'ADMIN' %}
+                                <th>操作</th>
+                                {% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 只显示有排程数据的工序 -->
+                            {% for process_key, process_data in date_data.items() %}
+                            <tr>
+                                <!-- 解析process_key为车间名和工序名 -->
+                                {% set process_parts = process_key.split('_') %}
+                                {% set workshop_name = process_parts[0] %}
+                                {% set process_name = process_parts[1:]|join('_') %}
+                                <td><strong>{{ workshop_name }} - {{ process_name }}</strong></td>
+                                {% for hour in range(24) %}
+                                    {% set hour_data = process_data.get(hour|string, {'products': []}) %}
+                                    <td>
+                                        {% if hour_data.products %}
+                                            {% for product_info in hour_data.products %}
+                                                <div class="mb-2">
+                                                    <div><strong>{{ product_info.product_model }}</strong></div>
+                                                    <small class="text-muted">数量: {{ product_info.quantity }}</small><br>
+                                                    <small class="text-muted">机台数: {{ product_info.equipment_count }}</small><br>
+                                                    <small class="text-muted">累积已投: {{ product_info.cumulative_investment }}</small>
+                                                </div>
+                                            {% endfor %}
+                                        {% else %}
+                                            <span class="text-muted">空闲</span>
+                                        {% endif %}
+                                    </td>
+                                {% endfor %}
+                                {% if user.role.name == 'ADMIN' %}
+                                <td>
+                                    {% set workshop = workshops|selectattr('name', 'equalto', workshop_name)|first %}
+                                    {% set process = processes|selectattr('name', 'equalto', process_name)|first %}
+                                    <form method="POST" action="{{ url_for('delete_schedule_by_process') }}" style="display: inline;">
+                                        <input type="hidden" name="date" value="{{ date }}">
+                                        <input type="hidden" name="process_id" value="{{ process.id }}">
+                                        <input type="hidden" name="workshop_id" value="{{ workshop.id }}">
+                                        <button type="submit" class="btn btn-danger btn-sm" 
+                                                onclick="return confirm('确定要删除 {{ workshop_name }} - {{ process_name }} 在 {{ date }} 的排程吗？')">删除</button>
+                                    </form>
+                                </td>
+                                {% endif %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="alert alert-info">
+            <p>{{ selected_workshop }}暂无排产计划数据。</p>
+            {% if user.role.name == 'ADMIN' %}
+                <p>请生成排程计划。</p>
+            {% else %}
+                <p>请联系管理员生成排程计划。</p>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+
+<!-- 删除所有排程确认模态框 -->
+<div class="modal fade" id="deleteAllSchedulesModal" tabindex="-1" aria-labelledby="deleteAllSchedulesModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteAllSchedulesModalLabel">确认删除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>确定要删除所有排程数据吗？此操作不可恢复。</p>
+                <div class="mb-3">
+                    <label for="confirmPassword" class="form-label">请输入您的密码进行确认：</label>
+                    <input type="password" class="form-control" id="confirmPassword" name="password" required>
+                    <div class="form-text">为确保操作安全，请输入您的登录密码以确认删除操作。</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <form method="POST" action="{{ url_for('delete_all_schedules') }}" id="deleteSchedulesForm">
+                    <input type="hidden" name="password" id="hiddenPasswordInput">
+                    <button type="submit" class="btn btn-danger" onclick="return validatePassword()">确认删除</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function validatePassword() {
+    const password = document.getElementById('confirmPassword').value;
+    if (!password || password.trim() === '') {
+        alert('请输入密码以确认删除操作！');
+        return false;
+    }
+    
+    // 将密码值复制到隐藏输入框中
+    document.getElementById('hiddenPasswordInput').value = password;
+    return true;
+}
+</script>
+{% endblock %}

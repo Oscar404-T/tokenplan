@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>创建订单</h2>
+
+<form method="POST" action="{{ url_for('create_order') }}">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label for="customer_name" class="form-label">客户名称</label>
+                <input type="text" class="form-control" id="customer_name" name="customer_name" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="product_model" class="form-label">产品型号</label>
+                <input type="text" class="form-control" id="product_model" name="product_model" required>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-4">
+                    <label for="length" class="form-label">长度 (mm)</label>
+                    <input type="number" step="0.0001" min="0" class="form-control" id="length" name="length" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="width" class="form-label">宽度 (mm)</label>
+                    <input type="number" step="0.0001" min="0" class="form-control" id="width" name="width" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="thickness" class="form-label">板厚 (mm)</label>
+                    <input type="number" step="0.0001" min="0" class="form-control" id="thickness" name="thickness" required>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="shipping_quantity" class="form-label">出货数量</label>
+                <input type="number" class="form-control" id="shipping_quantity" name="shipping_quantity" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="yield_rate" class="form-label">预估良率</label>
+                <input type="number" step="0.01" class="form-control" id="yield_rate" name="yield_rate" min="0.01" max="1" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="shipping_date" class="form-label">出货日期</label>
+                <input type="date" class="form-control" id="shipping_date" name="shipping_date" required>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label for="raw_glass_size" class="form-label">原玻尺寸 (格式: 长x宽)</label>
+                <input type="text" class="form-control" id="raw_glass_size" name="raw_glass_size" placeholder="如: 100x200" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="workshop" class="form-label">生产车间</label>
+                <select class="form-control" id="workshop" name="workshop" required>
+                    <option value="UTG1车间">UTG1车间</option>
+                    <option value="UTG2车间">UTG2车间</option>
+                    <option value="UTG3车间">UTG3车间</option>
+                    <option value="中试线">中试线</option>
+                </select>
+            </div>
+            
+            <div class="card bg-light mt-4">
+                <div class="card-header">
+                    <h5>计算说明</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>投产数量</strong> = 出货数量 / 预估良率</p>
+                    <p><strong>叠数计算公式</strong> = 8微米*(叠数+1) + 产品板厚*叠数 + 0.8mm ≤ 1.3mm</p>
+                    <p><strong>切数计算需求</strong> = 点胶偏移单边4mm，产品长宽单边+2mm，根据原玻尺寸计算最大切数，产品可旋转90度</p>
+                    <p class="text-info"><strong>注意：</strong> 板厚单位现在为毫米(mm)</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="mt-4">
+        <button type="submit" class="btn btn-primary">创建订单</button>
+        <a href="{{ url_for('order_management') }}" class="btn btn-secondary">取消</a>
+    </div>
+</form>
+{% endblock %}

@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>产能管理</h2>
+
+<p>在此页面可以管理各车间的产能信息，设置各工序的机台名称、数量和节拍，系统将自动计算产能。</p>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h3 class="mb-0">添加设备</h3>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('add_equipment') }}">
+            <div class="row">
+                <div class="col-md-3">
+                    <label for="workshopSelect" class="form-label">选择车间</label>
+                    <select class="form-select" id="workshopSelect" name="workshop_id" required>
+                        <option value="">选择车间</option>
+                        {% for workshop in workshops %}
+                        <option value="{{ workshop.id }}">{{ workshop.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="processSelect" class="form-label">选择工序</label>
+                    <select class="form-select" id="processSelect" name="process_id" required>
+                        <option value="">选择工序</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="name" class="form-label">机台名称</label>
+                    <input type="text" class="form-control" id="name" name="name" placeholder="机台名称" required>
+                </div>
+                <div class="col-md-2">
+                    <label for="quantity" class="form-label">机台数量</label>
+                    <input type="number" class="form-control" id="quantity" name="quantity" value="1" min="1" placeholder="数量" required>
+                </div>
+                <div class="col-md-2">
+                    <label for="beat" class="form-label">节拍 (秒/批次)</label>
+                    <input type="number" step="0.01" class="form-control" id="beat" name="beat" min="0.01" placeholder="节拍" required>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-2">
+                    <label for="batchSize" class="form-label">每批次数量</label>
+                    <input type="number" class="form-control" id="batchSize" name="batch_size" value="1" min="1" placeholder="每批次数量" required>
+                </div>
+                <div class="col-md-2">
+                    <label for="capacityPerHour" class="form-label">每小时产能 (件)</label>
+                    <input type="text" class="form-control" id="capacityPerHour" name="capacity_per_hour" readonly>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">添加设备</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="accordion mt-4" id="workshopAccordion">
+    {% for workshop in workshops %}
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="heading{{ workshop.id }}">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ workshop.id }}" aria-expanded="true" aria-controls="collapse{{ workshop.id }}">
+                {{ workshop.name }}
+            </button>
+        </h2>
+        <div id="collapse{{ workshop.id }}" class="accordion-collapse collapse show" aria-labelledby="heading{{ workshop.id }}" data-bs-parent="#workshopAccordion">
+            <div class="accordion-body">
+                <!-- 按工序分组显示设备信息 -->
+                {% set workshop_processes = processes|selectattr('workshop_id', 'equalto', workshop.id)|list %}
+                
+                {% for process in workshop_processes %}
+                <div class="card mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">{{ process.name }}</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if equipment_data[process.id] %}
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>机台名称</th>
+                                        <th>机台数量</th>
+                                        <th>节拍 (秒/批次)</th>
+                                        <th>每批次数量</th>
+                                        <th>每小时产能 (件)</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for equipment in equipment_data[process.id] %}
+                                    <tr>
+                                        <td>{{ equipment.name }}</td>
+                                        <td>{{ equipment.quantity }}</td>
+                                        <td>{{ equipment.beat }}</td>
+                                        <td>{{ equipment.batch_size }}</td>
+                                        <td>{{ "%.2f"|format(equipment.capacity_per_hour) }}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" 
+                                                    data-bs-target="#editEquipmentModal" 
+                                                    onclick="fillEquipmentForm({{ equipment.id }}, '{{ equipment.name }}', {{ equipment.quantity }}, {{ equipment.beat }}, {{ equipment.batch_size }}, {{ equipment.process.workshop.id }}, {{ equipment.process_id }})">
+                                                编辑
+                                            </button>
+                                            <form method="POST" action="{{ url_for('delete_equipment', equipment_id=equipment.id) }}" 
+                                                  style="display: inline;" 
+                                                  onsubmit="return confirm('确定要删除这个设备吗？')">
+                                                <button type="submit" class="btn btn-sm btn-danger">删除</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <p class="text-muted">暂无设备信息</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+
+<!-- 编辑设备模态框 -->
+<div class="modal fade" id="editEquipmentModal" tabindex="-1" aria-labelledby="editEquipmentModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editEquipmentModalLabel">编辑设备</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editEquipmentForm" method="POST" action="">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="editWorkshop" class="col-form-label">车间:</label>
+                        <select class="form-select" id="editWorkshop" name="workshop_id" required disabled>
+                            {% for workshop in workshops %}
+                            <option value="{{ workshop.id }}">{{ workshop.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editProcess" class="col-form-label">工序:</label>
+                        <select class="form-select" id="editProcess" name="process_id" required disabled>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editName" class="col-form-label">机台名称:</label>
+                        <input type="text" class="form-control" id="editName" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editQuantity" class="col-form-label">机台数量:</label>
+                        <input type="number" class="form-control" id="editQuantity" name="quantity" min="1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editBeat" class="col-form-label">节拍 (秒/批次):</label>
+                        <input type="number" step="0.01" class="form-control" id="editBeat" name="beat" min="0.01" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editBatchSize" class="col-form-label">每批次数量:</label>
+                        <input type="number" class="form-control" id="editBatchSize" name="batch_size" min="1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editCapacityPerHour" class="col-form-label">每小时产能 (件):</label>
+                        <input type="text" class="form-control" id="editCapacityPerHour" name="capacity_per_hour" readonly>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// 根据选择的车间动态加载工序
+document.getElementById('workshopSelect').addEventListener('change', function() {
+    const workshopId = this.value;
+    const processSelect = document.getElementById('processSelect');
+    
+    // 清空现有选项
+    processSelect.innerHTML = '<option value="">选择工序</option>';
+    
+    if (workshopId) {
+        // 根据车间ID过滤工序
+        {% for process in processes %}
+        if ({{ process.workshop_id }} == workshopId) {
+            const option = document.createElement('option');
+            option.value = {{ process.id }};
+            option.textContent = '{{ process.name }}';
+            processSelect.appendChild(option);
+        }
+        {% endfor %}
+    }
+});
+
+// 实时计算产能
+function calculateCapacity() {
+    const quantity = parseFloat(document.getElementById('quantity').value) || 0;
+    const beat = parseFloat(document.getElementById('beat').value) || 1;
+    const batchSize = parseFloat(document.getElementById('batchSize').value) || 1;
+    
+    // 每小时产能 = (3600秒/节拍) * 机台数量 * 每批次数量
+    const capacityPerHour = (3600 / beat) * quantity * batchSize;
+    
+    document.getElementById('capacityPerHour').value = capacityPerHour.toFixed(2);
+}
+
+// 监听数量、节拍和批次大小输入变化
+document.getElementById('quantity').addEventListener('input', calculateCapacity);
+document.getElementById('beat').addEventListener('input', calculateCapacity);
+document.getElementById('batchSize').addEventListener('input', calculateCapacity);
+
+// 编辑表单中的产能计算
+function calculateEditCapacity() {
+    const quantity = parseFloat(document.getElementById('editQuantity').value) || 0;
+    const beat = parseFloat(document.getElementById('editBeat').value) || 1;
+    const batchSize = parseFloat(document.getElementById('editBatchSize').value) || 1;
+    
+    // 每小时产能 = (3600秒/节拍) * 机台数量 * 每批次数量
+    const capacityPerHour = (3600 / beat) * quantity * batchSize;
+    
+    document.getElementById('editCapacityPerHour').value = capacityPerHour.toFixed(2);
+}
+
+// 监听编辑表单中的数量、节拍和批次大小输入变化
+document.getElementById('editQuantity').addEventListener('input', calculateEditCapacity);
+document.getElementById('editBeat').addEventListener('input', calculateEditCapacity);
+document.getElementById('editBatchSize').addEventListener('input', calculateEditCapacity);
+
+// 填充编辑表单
+function fillEquipmentForm(equipmentId, name, quantity, beat, batchSize, workshopId, processId) {
+    document.getElementById('editName').value = name;
+    document.getElementById('editQuantity').value = quantity;
+    document.getElementById('editBeat').value = beat;
+    document.getElementById('editBatchSize').value = batchSize;
+    
+    // 设置车间（禁用编辑）
+    document.getElementById('editWorkshop').value = workshopId;
+    
+    // 需要先设置工序选项
+    const editProcessSelect = document.getElementById('editProcess');
+    editProcessSelect.innerHTML = '<option value="">选择工序</option>';
+    
+    // 重新渲染所有属于该车间的工序
+    {% for process in processes %}
+    if ({{ process.workshop_id }} == workshopId) {
+        const option = document.createElement('option');
+        option.value = {{ process.id }};
+        // 如果是当前设备的工序，标记为selected
+        if ({{ process.id }} == processId) {
+            option.selected = true;
+        }
+        option.textContent = '{{ process.name }}';
+        editProcessSelect.appendChild(option);
+    }
+    {% endfor %}
+    
+    // 设置工序（禁用编辑）
+    document.getElementById('editProcess').value = processId;
+    
+    // 计算初始产能
+    calculateEditCapacity();
+    
+    document.getElementById('editEquipmentForm').action = '/update_equipment/' + equipmentId;
+}
+</script>
+{% endblock %}
