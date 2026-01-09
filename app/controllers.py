@@ -849,6 +849,10 @@ def calculate_cutting_count(length, width, raw_glass_size):
         raw_x = float(raw_parts[0].strip())  # 单位已经是毫米
         raw_y = float(raw_parts[1].strip())  # 单位已经是毫米
         
+        # 计算实际需要的产品尺寸（产品长宽单边+2mm）
+        actual_length = length + 2 * 2  # 长度单边+2mm，总共+4mm
+        actual_width = width + 2 * 2    # 宽度单边+2mm，总共+4mm
+        
         # 应用点胶偏移：单边4mm，所以每边减去4mm，总共长宽各减去8mm
         effective_x = raw_x - 8  # 有效长度 = 原玻长度 - 8mm
         effective_y = raw_y - 8  # 有效宽度 = 原玻宽度 - 8mm
@@ -856,10 +860,6 @@ def calculate_cutting_count(length, width, raw_glass_size):
         # 确保有效区域为正数
         if effective_x <= 0 or effective_y <= 0:
             return 1  # 如果有效区域为负或零，则返回默认值1
-            
-        # 计算实际需要的产品尺寸（产品长宽单边+2mm）
-        actual_length = length + 2 * 2  # 长度单边+2mm，总共+4mm
-        actual_width = width + 2 * 2    # 宽度单边+2mm，总共+4mm
         
         # 定义两个方向的产品尺寸
         orientation1 = (actual_length, actual_width)  # 原始方向
@@ -878,19 +878,57 @@ def calculate_cutting_count(length, width, raw_glass_size):
                 basic_count = count_along_x * count_along_y
                 max_count = max(max_count, basic_count)
                 
-                # 尝试混合排列，利用剩余空间
+                # 尝试更高级的混合排列策略
+                # 策略1: 部分空间用原方向，剩余空间用旋转方向
                 remaining_x = effective_x - (count_along_x * prod_len)
                 remaining_y = effective_y - (count_along_y * prod_wid)
                 
-                # 在X方向剩余空间尝试放置旋转的产品
+                # 在X方向剩余空间尝试放置旋转的产品（方向与当前方向垂直）
                 if remaining_x >= prod_wid and prod_len <= effective_y:
-                    additional_count_x = int(remaining_x // prod_wid) * count_along_y
+                    # 使用剩余的X空间和完整的Y空间放置垂直方向的产品
+                    alt_prod_len, alt_prod_wid = prod_wid, prod_len  # 旋转90度
+                    additional_count_x = int(remaining_x // alt_prod_len) * int(effective_y // alt_prod_wid)
                     max_count = max(max_count, basic_count + additional_count_x)
                 
-                # 在Y方向剩余空间尝试放置旋转的产品
+                # 在Y方向剩余空间尝试放置旋转的产品（方向与当前方向垂直）
                 if remaining_y >= prod_len and prod_wid <= effective_x:
-                    additional_count_y = int(remaining_y // prod_len) * count_along_x
+                    # 使用剩余的Y空间和完整的X空间放置垂直方向的产品
+                    alt_prod_len, alt_prod_wid = prod_wid, prod_len  # 旋转90度
+                    additional_count_y = int(remaining_y // alt_prod_len) * int(effective_x // alt_prod_wid)
                     max_count = max(max_count, basic_count + additional_count_y)
+                
+                # 策略2: 复杂混合布局
+                # 尝试用部分X空间放置原方向产品，剩余空间放置旋转方向产品
+                for x_partition in range(1, count_along_x):
+                    used_x = x_partition * prod_len
+                    remaining_x_space = effective_x - used_x
+                    
+                    # 左侧放置原方向产品
+                    left_count = x_partition * count_along_y
+                    
+                    # 右侧尝试放置旋转方向产品
+                    if remaining_x_space >= prod_wid and prod_len <= effective_y:
+                        alt_prod_len, alt_prod_wid = prod_wid, prod_len
+                        right_x_count = int(remaining_x_space // alt_prod_len)
+                        right_y_count = int(effective_y // alt_prod_wid)
+                        right_count = right_x_count * right_y_count
+                        max_count = max(max_count, left_count + right_count)
+                
+                # 尝试用部分Y空间放置原方向产品，剩余空间放置旋转方向产品
+                for y_partition in range(1, count_along_y):
+                    used_y = y_partition * prod_wid
+                    remaining_y_space = effective_y - used_y
+                    
+                    # 上侧放置原方向产品
+                    top_count = count_along_x * y_partition
+                    
+                    # 下侧尝试放置旋转方向产品
+                    if remaining_y_space >= prod_len and prod_wid <= effective_x:
+                        alt_prod_len, alt_prod_wid = prod_len, prod_wid
+                        bottom_x_count = int(effective_x // alt_prod_len)
+                        bottom_y_count = int(remaining_y_space // alt_prod_wid)
+                        bottom_count = bottom_x_count * bottom_y_count
+                        max_count = max(max_count, top_count + bottom_count)
         
         return max(max_count, 1)
     except:
