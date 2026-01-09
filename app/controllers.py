@@ -282,6 +282,10 @@ def register_routes(app, db):
         processes = Process.query.all()
         workshops = Workshop.query.all()
         
+        # 获取当前选中车间的ID
+        selected_workshop = Workshop.query.filter_by(name=selected_workshop_name).first()
+        selected_workshop_id = selected_workshop.id if selected_workshop else None
+        
         # 按日期和工序聚合排程数据
         schedule_data = {}
         
@@ -365,7 +369,146 @@ def register_routes(app, db):
                                workshops=workshops,
                                processes=processes,
                                selected_workshop=selected_workshop_name,
+                               selected_workshop_id=selected_workshop_id,
                                user=user)
+
+    @app.route('/delete_schedule_by_workshop', methods=['POST'])
+    @admin_required
+    def delete_schedule_by_workshop(user):
+        """按车间删除排程 - 仅管理员"""
+        workshop_id = request.form.get('workshop_id')
+        
+        if not workshop_id:
+            flash('请选择要删除排程的车间！', 'error')
+            return redirect(url_for('overall_production_schedule'))
+        
+        from app.models import Workshop
+        workshop = Workshop.query.get(workshop_id)
+        if not workshop:
+            flash('无效的车间！', 'error')
+            return redirect(url_for('overall_production_schedule'))
+        
+        # 删除指定车间的所有排程数据
+        from app.models import ProductionSchedule
+        deleted_count = db.session.query(ProductionSchedule).filter(
+            ProductionSchedule.workshop_id == workshop_id
+        ).delete()
+        
+        db.session.commit()
+        
+        flash(f'已成功删除 {workshop.name} 的 {deleted_count} 条排程数据！', 'success')
+        return redirect(url_for('overall_production_schedule'))
+
+    @app.route('/user_management')
+    @admin_required
+    def user_management(user):
+        """用户管理页面 - 仅管理员"""
+        from app.models import User
+        users = User.query.all()
+        return render_template('user_management.html', users=users, user=user)
+
+    @app.route('/add_user', methods=['POST'])
+    @admin_required
+    def add_user(user):
+        """添加用户 - 仅管理员"""
+        from app.models import User
+        from werkzeug.security import generate_password_hash
+        
+        username = request.form.get('username')
+        password = request.form.get('password')
+        role = request.form.get('role', 'USER')  # 默认为普通用户
+        
+        # 检查用户名是否已存在
+        existing_user = User.query.filter_by(username=username).first()
+        if existing_user:
+            flash('用户名已存在，请选择其他用户名！', 'error')
+            return redirect(url_for('user_management'))
+        
+        # 创建新用户
+        new_user = User(
+            username=username,
+            password=generate_password_hash(password),  # 使用哈希存储密码
+            role=User.UserRole[role] if role in ['ADMIN', 'USER'] else User.UserRole.USER
+        )
+        
+        db.session.add(new_user)
+        db.session.commit()
+        
+        flash(f'用户 {username} 已成功添加！', 'success')
+        return redirect(url_for('user_management'))
+
+    @app.route('/update_user/<int:user_id>', methods=['POST'])
+    @admin_required
+    def update_user(user, user_id):
+        """更新用户权限 - 仅管理员"""
+        from app.models import User
+        from werkzeug.security import generate_password_hash
+        
+        target_user = User.query.get_or_404(user_id)
+        
+        # 更新用户角色
+        new_role = request.form.get('role')
+        if new_role in ['ADMIN', 'USER']:
+            target_user.role = User.UserRole[new_role]
+        
+        # 更新密码（如果提供了新密码）
+        new_password = request.form.get('password')
+        if new_password:
+            target_user.password = generate_password_hash(new_password)
+        
+        db.session.commit()
+        flash(f'用户 {target_user.username} 的信息已更新！', 'success')
+        return redirect(url_for('user_management'))
+
+    @app.route('/delete_user/<int:user_id>', methods=['POST'])
+    @admin_required
+    def delete_user(user, user_id):
+        """删除用户 - 仅管理员"""
+        from app.models import User
+        
+        target_user = User.query.get_or_404(user_id)
+        
+        # 防止管理员删除自己
+        if target_user.id == user.id:
+            flash('您不能删除自己的账户！', 'error')
+            return redirect(url_for('user_management'))
+        
+        db.session.delete(target_user)
+        db.session.commit()
+        
+        flash(f'用户 {target_user.username} 已被删除！', 'success')
+        return redirect(url_for('user_management'))
+
+    @app.route('/change_password', methods=['GET', 'POST'])
+    @login_required
+    def change_password(user=None):
+        """更改密码功能"""
+        from app.models import User
+        from werkzeug.security import check_password_hash, generate_password_hash
+        
+        if request.method == 'POST':
+            old_password = request.form.get('old_password')
+            new_password = request.form.get('new_password')
+            confirm_password = request.form.get('confirm_password')
+            
+            # 验证旧密码
+            if not check_password_hash(user.password, old_password):
+                flash('旧密码不正确！', 'error')
+                return redirect(url_for('change_password'))
+            
+            # 验证新密码和确认密码是否一致
+            if new_password != confirm_password:
+                flash('新密码与确认密码不匹配！', 'error')
+                return redirect(url_for('change_password'))
+            
+            # 更新密码
+            user.password = generate_password_hash(new_password)
+            db.session.commit()
+            
+            flash('密码已成功更新，请使用新密码重新登录！', 'success')
+            return redirect(url_for('logout'))  # 更改密码后自动退出登录
+        
+        return render_template('change_password.html', user=user)
 
     @app.route('/add_equipment', methods=['POST'])
     @admin_required

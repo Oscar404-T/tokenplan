@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>用户管理</h2>
+</div>
+
+<!-- 添加用户表单 -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h4>添加新用户</h4>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('add_user') }}">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="username" class="form-label">用户名</label>
+                    <input type="text" class="form-control" id="username" name="username" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="password" class="form-label">密码</label>
+                    <input type="password" class="form-control" id="password" name="password" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="role" class="form-label">角色</label>
+                    <select class="form-select" id="role" name="role">
+                        <option value="USER" selected>普通用户</option>
+                        <option value="ADMIN">管理员</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">添加用户</button>
+        </form>
+    </div>
+</div>
+
+<!-- 用户列表 -->
+<div class="card">
+    <div class="card-header">
+        <h4>用户列表</h4>
+    </div>
+    <div class="card-body">
+        {% if users %}
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>用户ID</th>
+                        <th>用户名</th>
+                        <th>角色</th>
+                        <th>创建时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in users %}
+                    <tr>
+                        <td>{{ u.id }}</td>
+                        <td>{{ u.username }}</td>
+                        <td>
+                            {% if u.role.value == 'admin' %}
+                                <span class="badge bg-danger">管理员</span>
+                            {% else %}
+                                <span class="badge bg-secondary">普通用户</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ u.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#updateUserModal{{ u.id }}">
+                                    编辑
+                                </button>
+                                {% if u.id != user.id %}
+                                    <form method="POST" action="{{ url_for('delete_user', user_id=u.id) }}" style="display: inline;" 
+                                          onsubmit="return confirm('确定要删除用户 {{ u.username }} 吗？此操作不可恢复。');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">删除</button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    <!-- 编辑用户模态框 -->
+                    <div class="modal fade" id="updateUserModal{{ u.id }}" tabindex="-1" aria-labelledby="updateUserModalLabel{{ u.id }}" aria-hidden="true">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="updateUserModalLabel{{ u.id }}">编辑用户 - {{ u.username }}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <form method="POST" action="{{ url_for('update_user', user_id=u.id) }}">
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <label for="updateRole{{ u.id }}" class="form-label">角色</label>
+                                        <select class="form-select" id="updateRole{{ u.id }}" name="role">
+                                            <option value="USER" {% if u.role.value != 'admin' %}selected{% endif %}>普通用户</option>
+                                            <option value="ADMIN" {% if u.role.value == 'admin' %}selected{% endif %}>管理员</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="updatePassword{{ u.id }}" class="form-label">新密码（留空则不修改）</label>
+                                        <input type="password" class="form-control" id="updatePassword{{ u.id }}" name="password" placeholder="留空则不修改密码">
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                                    <button type="submit" class="btn btn-primary">保存更改</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <p>暂无用户数据。</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

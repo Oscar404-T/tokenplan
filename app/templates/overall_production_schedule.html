@@ -4,7 +4,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2>整体排产计划</h2>
     <div>
-        {% if user.role.name == 'ADMIN' %}
+        {% if user.role.value == 'admin' %}
             <form method="POST" action="{{ url_for('generate_schedule') }}" style="display: inline;">
                 <button type="submit" class="btn btn-success">生成排程计划</button>
             </form>
@@ -42,13 +42,28 @@
 
 <p>查看{{ selected_workshop }}的排产情况</p>
 
+{% if user.role.value == 'admin' %}
+<!-- 按车间删除排程功能 -->
+<div class="card mb-4">
+    <div class="card-body">
+        <h5>批量操作</h5>
+        <form method="POST" action="{{ url_for('delete_schedule_by_workshop') }}" 
+              style="display: inline;" 
+              onsubmit="return confirm('确定要删除 {{ selected_workshop }} 的所有排程数据吗？此操作不可恢复。');">
+            <input type="hidden" name="workshop_id" value="{{ selected_workshop_id }}">
+            <button type="submit" class="btn btn-warning">删除当前车间所有排程</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+
 <div class="mt-4">
     {% if schedule_data %}
         {% for date, date_data in schedule_data.items() %}
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h4 class="mb-0">{{ date }} 排产计划</h4>
-                {% if user.role.name == 'ADMIN' %}
+                {% if user.role.value == 'admin' %}
                     <form method="POST" action="{{ url_for('delete_schedule_by_date', date=date) }}" style="display: inline;">
                         <button type="submit" class="btn btn-danger btn-sm" 
                                 onclick="return confirm('确定要删除 {{ date }} 的所有排程数据吗？')">删除当天排程</button>
@@ -65,7 +80,7 @@
                                 {% for hour in range(24) %}
                                 <th>{{ "%02d"|format(hour) }}:00</th>
                                 {% endfor %}
-                                {% if user.role.name == 'ADMIN' %}
+                                {% if user.role.value == 'admin' %}
                                 <th>操作</th>
                                 {% endif %}
                             </tr>
@@ -96,7 +111,7 @@
                                         {% endif %}
                                     </td>
                                 {% endfor %}
-                                {% if user.role.name == 'ADMIN' %}
+                                {% if user.role.value == 'admin' %}
                                 <td>
                                     {% set workshop = workshops|selectattr('name', 'equalto', workshop_name)|first %}
                                     {% set process = processes|selectattr('name', 'equalto', process_name)|first %}
@@ -120,7 +135,7 @@
     {% else %}
         <div class="alert alert-info">
             <p>{{ selected_workshop }}暂无排产计划数据。</p>
-            {% if user.role.name == 'ADMIN' %}
+            {% if user.role.value == 'admin' %}
                 <p>请生成排程计划。</p>
             {% else %}
                 <p>请联系管理员生成排程计划。</p>
@@ -168,5 +183,17 @@ function validatePassword() {
     document.getElementById('hiddenPasswordInput').value = password;
     return true;
 }
+
+// 页面加载完成后，处理车间选择器变化时的事件
+document.addEventListener('DOMContentLoaded', function() {
+    const workshopSelect = document.getElementById('workshop');
+    if (workshopSelect) {
+        workshopSelect.addEventListener('change', function() {
+            // 当选择车间时，自动跳转到新URL
+            const selectedWorkshop = this.value;
+            window.location.href = '{{ url_for('overall_production_schedule') }}?workshop=' + encodeURIComponent(selectedWorkshop);
+        });
+    }
+});
 </script>
 {% endblock %}
